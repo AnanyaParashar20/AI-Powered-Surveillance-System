@@ -1,6 +1,6 @@
-# FILE: README.md
 
-# 🔍 Surveillance Anomaly Detection System
+
+# 🔍 SightSure- Surveillance Anomaly Detection System
 
 A comprehensive Python system for detecting loitering, object abandonment, and unusual movement in prerecorded CCTV videos, with full evaluation support for the Avenue Dataset.
 
