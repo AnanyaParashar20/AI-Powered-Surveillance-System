@@ -1,0 +1,2 @@
+frame_idx,time_sec,type,track_id,score,bbox,contributors,image_path
+762,30.48,loitering,31,55.0,"[0, 0, 0, 0]","[{""track_id"": 31, ""dwell_seconds"": 24.0, ""bbox"": [563.1898148732872, 119.94183742653748, 29.81153498392136, 99.79473486406076], ""center"": [578.0955823652479, 169.83920485856785]}]",data/avenue/preds/03/frames/03_frame000762_loitering_track31_20250823_201045_738.jpg

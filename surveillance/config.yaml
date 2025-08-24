@@ -1,0 +1,46 @@
+# FILE: config.yaml
+
+video:
+  target_fps: 15
+  max_side: 960
+  frame_skip: 0
+
+model:
+  detector: yolo  # 'yolo' or 'hog'
+  yolo_weights: yolov8n.pt
+  conf_thres: 0.35
+  person_labels: [0, 'person']
+  object_labels: ['backpack', 'handbag', 'suitcase', 'bottle', 'cell phone']
+
+tracker:
+  max_age: 15
+  iou_match: 0.3
+  dist_match: 80
+  smoothing: 0.8
+
+roi:
+  use_full_frame: true
+  polygon: []  # [[x1,y1], [x2,y2], ...] if use_full_frame is false
+
+events:
+  loitering_seconds: 15
+  unusual:
+    flow_history: 30
+    z_thresh: 2.5
+    min_area: 400
+    nms_iou: 0.3
+  abandonment:
+    static_seconds: 1      # Very low - objects only need to be static for 1 second
+    owner_link_seconds: 1  # Very low - quick owner association
+    owner_max_dist: 300    # Very wide search radius
+    absent_seconds: 1      # Owner only needs to be absent 1 second
+
+fusion:
+  w_loiter: 0.1        # Minimal weight for loitering
+  w_unusual: 0.1       # Minimal weight for unusual
+  w_abandon: 0.8       # Maximum weight for abandonment
+  alert_threshold: 15  # Very low threshold
+
+output:
+  save_frames: true
+  clip_seconds: 4

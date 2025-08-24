@@ -1,0 +1,3 @@
+frame_idx,time_sec,type,track_id,score,bbox,contributors,image_path
+600,24.0,loitering,2,55.0,"[0, 0, 0, 0]","[{""track_id"": 2, ""dwell_seconds"": 24.0, ""bbox"": [78.88016246924494, 0.12226243222027743, 317.29988678608277, 356.3132929447594], ""center"": [237.53010586228632, 178.27890890459997]}]",data/avenue/preds/06/frames/06_frame000600_loitering_track2_20250823_201549_764.jpg
+630,25.2,loitering,2,56.5,"[0, 0, 0, 0]","[{""track_id"": 2, ""dwell_seconds"": 25.2, ""bbox"": [0.34738407220403017, 43.11946218506871, 96.6544260663557, 312.79586145493334], ""center"": [48.67459710538188, 199.5173929125354]}]",data/avenue/preds/06/frames/06_frame000630_loitering_track2_20250823_201550_817.jpg
