@@ -71,11 +71,11 @@ def plot_timeline(df):
     # Create premium Plotly timeline
     fig = go.Figure()
     
-    # Color scheme for event types
+    # Red theme color scheme for event types
     colors = {
-        'abandonment': '#e74c3c',
-        'loitering': '#f39c12', 
-        'unusual': '#9b59b6'
+        'abandonment': '#dc2626',     # Dark red
+        'loitering': '#f97316',       # Orange-red  
+        'unusual': '#7c2d12'          # Dark red-brown
     }
     
     # Event type symbols
@@ -121,19 +121,19 @@ def plot_timeline(df):
             ))
         ))
     
-    # Premium styling
+    # Premium styling with red theme
     fig.update_layout(
         title={
             'text': 'Security Event Timeline',
             'x': 0.5,
             'xanchor': 'center',
-            'font': {'size': 20, 'color': '#2e3440', 'family': 'Segoe UI, sans-serif'}
+            'font': {'size': 20, 'color': '#000000', 'family': 'Segoe UI, sans-serif'}
         },
         xaxis_title="Time (seconds from start)",
         yaxis_title="Event Type",
-        plot_bgcolor='rgba(248, 249, 250, 0.8)',
+        plot_bgcolor='rgba(254, 242, 242, 0.5)',
         paper_bgcolor='white',
-        font=dict(family="Segoe UI, sans-serif", size=12, color="#2e3440"),
+        font=dict(family="Segoe UI, sans-serif", size=12, color="#000000"),
         hovermode='closest',
         height=400,
         margin=dict(l=20, r=20, t=60, b=20),
@@ -143,28 +143,28 @@ def plot_timeline(df):
             y=1.02,
             xanchor="right",
             x=1,
-            bgcolor="rgba(255,255,255,0.8)",
-            bordercolor="rgba(0,0,0,0.1)",
-            borderwidth=1
+            bgcolor="rgba(255,255,255,0.9)",
+            bordercolor="rgba(220,38,38,0.3)",
+            borderwidth=2
         )
     )
     
-    # Style axes
+    # Style axes with red theme
     fig.update_xaxes(
-        gridcolor='rgba(128, 128, 128, 0.2)',
+        gridcolor='rgba(220, 38, 38, 0.2)',
         showgrid=True,
         zeroline=False,
         tickformat='.0f',
-        tickfont=dict(color='#2e3440'),
-        title=dict(font=dict(color='#2e3440'))
+        tickfont=dict(color='#000000'),
+        title=dict(font=dict(color='#000000'))
     )
     
     fig.update_yaxes(
-        gridcolor='rgba(128, 128, 128, 0.2)',
+        gridcolor='rgba(220, 38, 38, 0.2)',
         showgrid=True,
         zeroline=False,
-        tickfont=dict(color='#2e3440'),
-        title=dict(font=dict(color='#2e3440'))
+        tickfont=dict(color='#000000'),
+        title=dict(font=dict(color='#000000'))
     )
     
     # Display in clean container
@@ -182,10 +182,21 @@ def plot_timeline(df):
         st.metric("Total Duration", f"{df_sorted['seconds_from_start'].max():.0f}s")
     
     with col2:
-        st.metric("Event Density", f"{len(df)/max(1, df_sorted['seconds_from_start'].max()/60):.1f}/min")
+        # Events per minute, guard divide-by-zero
+        total_seconds = max(1.0, float(df_sorted['seconds_from_start'].max()))
+        events_per_min = len(df) / (total_seconds / 60.0)
+        st.metric("Event Density", f"{events_per_min:.1f}/min")
     
     with col3:
-        st.metric("Most Common", df[event_type_col].mode().iloc[0].title())
+        # Guard for empty mode
+        if event_type_col in df.columns and not df[event_type_col].dropna().empty:
+            try:
+                most_common = df[event_type_col].mode().iloc[0]
+                st.metric("Most Common", str(most_common).title())
+            except Exception:
+                st.metric("Most Common", "N/A")
+        else:
+            st.metric("Most Common", "N/A")
 
 def display_alert_summary(df: pd.DataFrame):
     """Display event summary metrics."""
@@ -202,9 +213,13 @@ def display_alert_summary(df: pd.DataFrame):
         st.metric("Event Types", unique_types)
     
     with col3:
-        confidence_col = 'confidence' if 'confidence' in df.columns else 'score'
-        avg_confidence = df[confidence_col].mean()
-        st.metric("Avg Confidence", f"{avg_confidence:.1%}")
+        # Safely compute average confidence — handle missing column or empty values
+        confidence_col = 'confidence' if 'confidence' in df.columns else ('score' if 'score' in df.columns else None)
+        if confidence_col is not None and not df[confidence_col].dropna().empty:
+            avg_confidence = float(df[confidence_col].mean())
+            st.metric("Avg Confidence", f"{avg_confidence:.1%}")
+        else:
+            st.metric("Avg Confidence", "N/A")
     
     with col4:
         if 'timestamp' in df.columns:
@@ -291,6 +306,7 @@ def apply_filters(df: pd.DataFrame, filters: dict) -> pd.DataFrame:
 def display_alert_images(df: pd.DataFrame, image_dir: str):
     """Display alert images with color-coded event types."""
     if df.empty or 'image_path' not in df.columns:
+        st.info("💡 No image path column found in data")
         return
     
     st.subheader("📸 Alert Images")
@@ -299,63 +315,87 @@ def display_alert_images(df: pd.DataFrame, image_dir: str):
     df_with_images = df[df['image_path'].notna() & (df['image_path'] != '')]
     
     if df_with_images.empty:
-        st.info("No alert images available")
+        st.info("No alert images available in the selected data")
         return
     
-    st.write(f"Found {len(df_with_images)} alert images")
+    # Check how many images actually exist
+    existing_images = []
+    missing_images = []
     
-    # Create image grid
+    for idx, alert in df_with_images.iterrows():
+        image_path = alert['image_path']
+        
+        # Handle both absolute and relative paths
+        if not os.path.isabs(image_path):
+            full_path = os.path.join(os.getcwd(), image_path)
+        else:
+            full_path = image_path
+        
+        if os.path.exists(full_path):
+            existing_images.append((idx, alert, full_path))
+        else:
+            missing_images.append(image_path)
+    
+    # Show status
+    st.write(f"📊 Found {len(df_with_images)} image references:")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.success(f"✅ {len(existing_images)} images available")
+    with col2:
+        if missing_images:
+            st.warning(f"⚠️ {len(missing_images)} images missing")
+    
+    # Show missing image info (kept as in your version)
+    if missing_images and st.expander("Show missing image paths", expanded=False):
+        for missing_path in missing_images[:5]:  # Show first 5
+            st.text(f"❌ {missing_path}")
+        if len(missing_images) > 5:
+            st.text(f"... and {len(missing_images) - 5} more")
+    
+    if not existing_images:
+        st.error("❌ No valid images found. This may be demo data referencing non-existent images.")
+        st.info("💡 Try selecting a different CSV file that has actual processed video data.")
+        return
+    
+    # Create image grid for existing images
     cols_per_row = 3
-    rows = (len(df_with_images) + cols_per_row - 1) // cols_per_row
+    rows = (len(existing_images) + cols_per_row - 1) // cols_per_row
     
     for row in range(rows):
         cols = st.columns(cols_per_row)
         
         for col_idx in range(cols_per_row):
             alert_idx = row * cols_per_row + col_idx
-            if alert_idx >= len(df_with_images):
+            if alert_idx >= len(existing_images):
                 break
             
-            alert = df_with_images.iloc[alert_idx]
+            idx, alert, full_path = existing_images[alert_idx]
             
             with cols[col_idx]:
-                # Handle both absolute and relative paths
-                image_path = alert['image_path']
-                if not os.path.isabs(image_path):
-                    if os.path.exists(image_path):
-                        full_path = image_path
+                try:
+                    image = Image.open(full_path)
+                    
+                    # Get event info
+                    event_type = alert.get('event_type', alert.get('type', 'unknown'))
+                    confidence = alert.get('confidence', alert.get('score', 0))
+                    frame_info = alert.get('frame_idx', alert.get('time_sec', 'N/A'))
+                    
+                    # Color-coded caption based on event type
+                    if event_type == 'abandonment':
+                        color = "🔴"  # Red
+                    elif event_type == 'loitering':
+                        color = "🟡"  # Yellow
+                    elif event_type == 'unusual':
+                        color = "🟣"  # Purple
                     else:
-                        full_path = os.path.join(os.getcwd(), image_path)
-                else:
-                    full_path = image_path
-                
-                if os.path.exists(full_path):
-                    try:
-                        image = Image.open(full_path)
-                        
-                        # Get event info
-                        event_type = alert.get('event_type', alert.get('type', 'unknown'))
-                        confidence = alert.get('confidence', alert.get('score', 0))
-                        frame_info = alert.get('frame_idx', alert.get('time_sec', 'N/A'))
-                        
-                        # Color-coded caption based on event type
-                        if event_type == 'abandonment':
-                            color = "🔴"  # Red
-                        elif event_type == 'loitering':
-                            color = "🟡"  # Yellow
-                        elif event_type == 'unusual':
-                            color = "🟣"  # Purple
-                        else:
-                            color = "🔵"  # Blue
-                        
-                        caption = f"{color} Frame {frame_info}: {event_type.upper()} (Confidence: {confidence:.1%})"
-                        
-                        st.image(image, caption=caption, use_container_width=True)
-                        
-                    except Exception as e:
-                        st.error(f"Failed to load image: {e}")
-                else:
-                    st.error(f"Image not found: {full_path}")
+                        color = "🔵"  # Blue
+                    
+                    caption = f"{color} Frame {frame_info}: {event_type.upper()} (Score: {confidence:.1%})"
+                    
+                    st.image(image, caption=caption, width=300)
+                    
+                except Exception as e:
+                    st.error(f"Failed to load image {os.path.basename(full_path)}: {e}")
 
 
 def main():
@@ -368,81 +408,103 @@ def main():
         initial_sidebar_state="expanded"
     )
     
-    # Clean, professional styling
+    # -------------------- THEME + UPDATED SIDEBAR CSS (NO GREY) --------------------
     st.markdown("""
     <style>
-    .main > div {
-        padding-top: 1rem;
-        background-color: #fafafa;
-    }
+    /* ===== MAIN AREA ===== */
+    [data-testid="stAppViewContainer"] { background:#fff; }
+    .main > div { padding-top:1rem; background:#fff; }
     
-    .main-header {
-        background-color: #2e3440;
-        padding: 1.5rem;
-        border-radius: 8px;
-        margin-bottom: 1.5rem;
-        border-left: 4px solid #0066cc;
+    .main-header{
+      background:linear-gradient(135deg,#dc2626 0%,#ef4444 100%);
+      padding:1.5rem; border-radius:8px; margin-bottom:1.5rem;
+      border-left:4px solid #b91c1c; box-shadow:0 2px 4px rgba(220,38,38,.2);
     }
+    /* Force all main area text black for readability */
+    .main-title{ color:#000000!important; font-size:1.8rem; font-weight:600; margin:0; font-family:'Segoe UI',sans-serif; }
+    .main-subtitle{ color:#000000!important; font-size:.95rem; margin:.3rem 0 0; font-weight:400; }
     
-    .main-title {
-        color: #ffffff;
-        font-size: 1.8rem;
-        font-weight: 600;
-        margin: 0;
-        font-family: 'Segoe UI', sans-serif;
+    .data-section,.timeline-container{
+      background:#fff; padding:1.5rem; border-radius:6px; border:2px solid #ef4444;
+      margin:1rem 0; box-shadow:0 1px 3px rgba(220,38,38,.1);
     }
+    .section-title{ color:#111827!important; font-size:1.1rem; font-weight:600; margin-bottom:1rem; border-bottom:2px solid #dc2626; padding-bottom:.5rem; }
+    .status-info{ background:#fef2f2; border-left:4px solid #dc2626; padding:.8rem; border-radius:4px; color:#111827; margin:1rem 0; }
+    .block-container{ padding-top:1rem; padding-bottom:1rem; }
     
-    .main-subtitle {
-        color: #d8dee9;
-        font-size: 0.95rem;
-        margin: 0.3rem 0 0 0;
-        font-weight: 400;
+    [data-testid="metric-container"]{
+      background:#fff; border:1px solid #ef4444; padding:1rem; border-radius:6px; box-shadow:0 1px 3px rgba(220,38,38,.1);
     }
+
+        /* Make all standard textual elements in main content black */
+        .main-header *, .data-section, .data-section *, .timeline-container, .timeline-container *,
+        .status-info, .status-info *, .block-container, .block-container *,
+        h1, h2, h3, h4, h5, h6, p, span, label, div, li, strong, em {
+            color:#000000 !important;
+            text-shadow:none !important;
+        }
     
-    .css-1d391kg {
-        background-color: #f8f9fa;
+    /* ===== CONTROL PANEL / SIDEBAR (no grey) ===== */
+    section[data-testid="stSidebar"]{
+      background:#ffffff!important;
     }
-    
-    .data-section {
-        background: #ffffff;
-        padding: 1.5rem;
-        border-radius: 6px;
-        border: 1px solid #e1e5e9;
-        margin: 1rem 0;
+    section[data-testid="stSidebar"] > div{
+      background:linear-gradient(180deg,#ffffff 0%,#fff5f5 60%,#ffffff 100%)!important;
+      border-right:3px solid #dc2626!important;
+      box-shadow:2px 0 8px rgba(0,0,0,.06)!important;
+      padding-top:.5rem!important;
     }
-    
-    .section-title {
-        color: #2e3440 !important;
-        font-size: 1.1rem;
-        font-weight: 600;
-        margin-bottom: 1rem;
-        border-bottom: 2px solid #0066cc;
-        padding-bottom: 0.5rem;
+    /* Sidebar headings & text */
+    section[data-testid="stSidebar"] h1,
+    section[data-testid="stSidebar"] h2,
+    section[data-testid="stSidebar"] h3,
+    section[data-testid="stSidebar"] h4,
+    section[data-testid="stSidebar"] label,
+    section[data-testid="stSidebar"] span,
+    section[data-testid="stSidebar"] p,
+    section[data-testid="stSidebar"] .stMarkdown{
+      color:#111827!important;
     }
-    
-    .timeline-container {
-        background: #ffffff;
-        padding: 1.5rem;
-        border-radius: 6px;
-        border: 1px solid #e1e5e9;
-        margin: 1.5rem 0;
+    /* Badge-style title */
+    section[data-testid="stSidebar"] .cp-title{
+      display:block; background:#fff; color:#111827;
+      border:2px solid #111827; border-radius:8px; padding:.5rem .75rem;
+      font-weight:800; letter-spacing:.5px; text-transform:uppercase; text-align:center;
+      box-shadow:0 2px 4px rgba(0,0,0,.06);
     }
-    
-    .status-info {
-        background-color: #f0f8ff;
-        border-left: 4px solid #0066cc;
-        padding: 0.8rem;
-        border-radius: 4px;
-        color: #2e3440;
-        margin: 1rem 0;
+    /* Inputs */
+    section[data-testid="stSidebar"] .stRadio > label,
+    section[data-testid="stSidebar"] .stSelectbox > div > div,
+    section[data-testid="stSidebar"] .stMultiSelect > div > div,
+    section[data-testid="stSidebar"] .stTextInput > div > div > input,
+    section[data-testid="stSidebar"] .stFileUploader,
+    section[data-testid="stSidebar"] .stSlider{
+      background:#fff!important; border:2px solid #111827!important; border-radius:8px!important; color:#111827!important;
     }
-    
-    .block-container {
-        padding-top: 1rem;
-        padding-bottom: 1rem;
+    section[data-testid="stSidebar"] .stRadio > label:hover{
+      background:#f3f4f6!important; border-color:#111827!important; transform:translateX(2px);
     }
+    /* Buttons */
+    section[data-testid="stSidebar"] .stButton > button{
+      background:#fff!important; color:#111827!important; border:2px solid #111827!important;
+      border-radius:8px!important; font-weight:700!important; text-transform:uppercase; letter-spacing:.5px; transition:.2s;
+    }
+    section[data-testid="stSidebar"] .stButton > button:hover{
+      background:#111827!important; color:#fff!important; border-color:#111827!important;
+    }
+    /* Slider accents */
+    section[data-testid="stSidebar"] .stSlider [data-testid="stTickBar"]{
+      background:linear-gradient(90deg,#dc2626,#ef4444)!important;
+    }
+    /* Divider */
+    section[data-testid="stSidebar"] hr{
+      border:none!important; height:2px!important; background:#111827!important; margin:1rem 0!important;
+    }
+    /* Keep main content inheriting its colors */
+    [data-testid="stAppViewContainer"] *{ color:inherit; }
     </style>
     """, unsafe_allow_html=True)
+    # -------------------------------------------------------------------------------
     
     # Professional Header
     st.markdown("""
@@ -452,12 +514,13 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # Simple Sidebar Header
-    st.sidebar.markdown("### Control Panel")
+    # Enhanced Sidebar Navigation (new badge title)
+    st.sidebar.markdown('<span class="cp-title">🎛️ Control Panel</span>', unsafe_allow_html=True)
     st.sidebar.markdown("---")
     
-    # Auto-load demo or file uploader
-    data_source = st.sidebar.radio("Data Source", ["Auto-load Demo", "Upload CSV", "File Path"])
+    # Data Source Section
+    st.sidebar.markdown("### 📊 Data Source")
+    data_source = st.sidebar.radio("Select Input:", ["Auto-load Demo", "Upload CSV", "File Path"])
     
     df = pd.DataFrame()
     
@@ -487,7 +550,7 @@ def main():
             except Exception as e:
                 st.sidebar.error(f"Error reading file: {e}")
     else:
-        csv_path = st.sidebar.text_input("CSV File Path", "data/output/events_demo_abandonment_20250824_033500.csv")
+        csv_path = st.sidebar.text_input("CSV File Path", "data/output/events_09_20250823_210723.csv")
         if csv_path and os.path.exists(csv_path):
             df = load_events_data(csv_path)
             st.sidebar.success("File loaded successfully!")
@@ -509,42 +572,25 @@ def main():
         st.write("3. Or try **Upload CSV** if your browser supports file upload")
         return
     
-    # Filters
-    st.sidebar.header("Filters")
+    # Enhanced Filters Section
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 🔍 Filters & Controls")
     
     filters = {}
     
     # Event type filter
     event_types = df['type'].unique().tolist() if 'type' in df.columns else []
+    st.sidebar.markdown("**Event Types:**")
     filters['event_types'] = st.sidebar.multiselect(
-        "Event Types",
+        "Select events to display",
         event_types,
-        default=event_types
+        default=event_types,
+        help="Choose which event types to show in the dashboard"
     )
     
-    # Score range filter
-    if 'score' in df.columns and not df['score'].empty:
-        min_score = float(df['score'].min())
-        max_score = float(df['score'].max())
-        filters['score_range'] = st.sidebar.slider(
-            "Score Range",
-            min_score, max_score,
-            (min_score, max_score)
-        )
-    else:
-        filters['score_range'] = (0, 100)
-    
-    # Time range filter
-    if 'time_sec' in df.columns and not df['time_sec'].empty:
-        min_time = float(df['time_sec'].min())
-        max_time = float(df['time_sec'].max())
-        filters['time_range'] = st.sidebar.slider(
-            "Time Range (seconds)",
-            min_time, max_time,
-            (min_time, max_time)
-        )
-    else:
-        filters['time_range'] = (0, 1000)
+    # Set default values for removed filters
+    filters['score_range'] = (0, 100)
+    filters['time_range'] = (0, 1000)
     
     # Main content
     display_alert_summary(df)
@@ -559,16 +605,7 @@ def main():
     if 'image_path' in filtered_df.columns:
         display_alert_images(filtered_df, "")
     
-    # Export filtered data
-    if st.sidebar.button("Export Filtered Data"):
-        if filtered_df is not None and not filtered_df.empty:
-            csv = filtered_df.to_csv(index=False)
-            st.sidebar.download_button(
-                label="Download CSV",
-                data=csv,
-                file_name=f"filtered_alerts_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                mime="text/csv"
-            )
+    # (Export functionality removed as per request)
 
 
 if __name__ == "__main__":
