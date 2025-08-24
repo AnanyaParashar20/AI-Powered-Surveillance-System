@@ -4,7 +4,7 @@
 
 A comprehensive Python system for detecting loitering, object abandonment, and unusual movement in prerecorded CCTV videos, with full evaluation support for the Avenue Dataset.
 
-## 🚀 Features
+## Features
 
 ### Multi-Event Detection
 - **Loitering Detection**: Person dwelling in ROI beyond configurable threshold
@@ -28,7 +28,7 @@ A comprehensive Python system for detecting loitering, object abandonment, and u
 - **Image Gallery**: Alert screenshots with metadata
 - **Export Capabilities**: Download filtered results as CSV
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 surveillance/
@@ -116,7 +116,7 @@ python scripts/run_avenue_batch.py
 python -m src.eval.avenue_eval --gt_dir data/avenue/gt --pred_dir data/avenue/preds
 ```
 
-## ⚙️ Configuration
+##  Configuration
 
 Edit `config.yaml` to customize behavior:
 
@@ -141,7 +141,7 @@ roi:
   use_full_frame: true  # Or define polygon region
 ```
 
-## 📊 Output Files
+## Output Files
 
 ### Alert Log (CSV)
 - `frame_idx`: Frame number where alert occurred
@@ -158,7 +158,7 @@ Saved in `data/output/frames/` with descriptive filenames:
 - `video_frame000123_loitering_track1.jpg`
 - `video_frame000456_abandonment_track3.jpg`
 
-## 🏆 Avenue Dataset Results
+##  Avenue Dataset Results
 
 The system achieves competitive performance on the Avenue dataset:
 
@@ -191,7 +191,7 @@ python scripts/run_avenue_batch.py --workers 4
 python -m src.pipeline --video input.mp4 --show --save_video
 ```
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -214,7 +214,7 @@ video: { target_fps: 25, max_side: 1280 }
 model: { detector: yolo, yolo_weights: yolov8m.pt }
 ```
 
-## 📈 System Architecture
+##  System Architecture
 
 ### Detection Pipeline
 1. **Video Ingestion**: Frame extraction with FPS control
@@ -231,18 +231,8 @@ model: { detector: yolo, yolo_weights: yolov8m.pt }
 **Abandonment**: Static object detection + owner proximity tracking
 **Unusual Movement**: Optical flow z-score analysis with region segmentation
 
-## 🤝 Contributing
 
-The codebase is modular and extensible:
-- Add new event detectors in `src/events/`
-- Extend detection models in `src/detect.py`
-- Add evaluation metrics in `src/eval/`
-
-## 📄 License
-
-MIT License - See LICENSE file for details
-
-## 🙏 Acknowledgments
+##  Acknowledgments
 
 - Avenue Dataset: CUHK Computer Vision Group
 - YOLOv8: Ultralytics
