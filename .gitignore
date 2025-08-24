@@ -61,3 +61,7 @@ logs/
 # Temporary files
 tmp/
 temp/
+
+# Ignore generated metrics and large model
+evaluation_metrics.csv
+surveillance/yolov8n.pt
