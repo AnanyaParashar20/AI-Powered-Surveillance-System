@@ -241,4 +241,4 @@ model: { detector: yolo, yolo_weights: yolov8m.pt }
 
 ---
 
-**Ready to detect anomalies? Start with `python test_installation.py`!**
+
